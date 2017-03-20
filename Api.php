@@ -5,9 +5,9 @@ require_once("Rest.php");
 class Api extends Rest{
 	# valores fijos del servicio
 	const servidor = "localhost";
-	const usuario_db = "postgress";
-	const port = "5432";
-	const pwd_db = "";
+	const usuario_db = "root";
+	#const port = "5432";
+	const pwd_db = "liliana10";
 	const nombre_db = "autorizacion";
 	#variables globales
 	private $_conn = NULL;
@@ -20,20 +20,33 @@ class Api extends Rest{
 		$this->conectarDB();
 	}
 
+	//metodo que se conecta con la base de datos
 	private function conectarDB(){
-		$dsn = "host=".servidor." port=".port." user=".usuario_db." pass=".pwd_db." dbname=".nombre_db;
-    	try{
-    		$this->_conn = pg_connect(
-    	}
-    $connect = pg_connect("host=$host, port=$port, user=$user, 
-pass=$pass, dbname=$dbname");
+		$dsn = 'mysql:dbname='.self::nombre_db.' ;host='.self::servidor;
+		try {
+			#metodo abstracto para la conexion a la bd
+			$this->_conn = new PDO($dsn, self::usuario_db, self::pwd_db);
+		 	
+		 } catch (PDOException $e) {
+		 	echo "Falló la conexión: ".$e->getMessage();
+		 } 
+	}
 
-    if(!$connect)
-        echo "<p><i>No me conecte</i></p>";
-    else
-        echo "<p><i>Me conecte</i></p>";
-
-    pg_close($connect);
+	//metodo que devuelve un error y estado
+	private function devolverError($id){
+		//array de errores
+		$errores = array(
+			array('estado' => "error", "msg" => "Petición no encontrada"),
+			array('estado' => "error", "msg" => "Petición no aceptada"),
+			array('estado' => "error", "msg" => "Petición sin contenido"),
+			array('estado' => "error", "msg" => "Email o password incorrectos"),
+			array('estado' => "error", "msg" => "Error borrando usuarios"),
+			array('estado' => "error", "msg" => "Error actualizando nombre de usuario"),
+			array('estado' => "error", "msg" => "error buscando usuario por email"),
+			array('estado' => "error", "msg" => "Error creando usuario"),
+			array('estado' => "error", "msg" => "Usuario ya existe")
+			);
+		return $errores[$id];
 	}
 }
 
