@@ -83,7 +83,7 @@ class Api extends Rest{
 	}
 
 	//metodo encargado de procesar la peticion y devuelve un json con los datos de los usuarios
-	public function usuarios(){
+	private function usuarios(){
 		if ($_SERVER['REQUEST_METHOD'] != "GET") {
 			# no se envian los usuarios, se envia un error
 			$this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);
@@ -100,6 +100,45 @@ class Api extends Rest{
 	       $this->mostrarRespuesta($this->convertirJson($respuesta), 200);  
 	     } //se envia un error  
 	     $this->mostrarRespuesta($this->devolverError(2), 204);
+	}
+
+	//metodo encargado de procesar la peticion y devuelve un json indicando si el usuario existe
+	private function login(){
+		if ($_SERVER['REQUEST_METHOD'] != "POST") {
+			# no se envian los usuarios, se envia un error
+			$this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);
+		} //es una peticion POST
+		if(isset($this->datosPeticion['email'], $this->datosPeticion['pwd'])){
+			#el constructor padre se encarga de procesar los datos de entrada
+			$email = $this->datosPeticion['email'];  
+       		$pwd = $this->datosPeticion['pwd'];
+       		//si los datos de la solicitud no es tan vacios se procesa
+       		if (!empty($email) and !empty($pwd)){
+       			//se valida el email
+       			if (filter_var($email, FILTER_VALIDATE_EMAIL)) {  
+           			//consulta preparada mysqli_real_escape()
+       				$query = $this->_conn->prepare(
+       					"SELECT id, nombre, email, fRegistro 
+       					 FROM usuario 
+       					 WHERE email=:email AND password=:pwd ");
+       				//se le prestan los valores a la query
+       				$query->bindValue(":email", $email);  
+           			$query->bindValue(":pwd", sha1($pwd));  
+           			$query->execute(); //se ejecuta la consulta
+           			//Se devuelve un respuesta a partir del resultado
+           			if ($fila = $query->fetch(PDO::FETCH_ASSOC)){  
+			            $respuesta['estado'] = 'correcto';  
+			            $respuesta['msg'] = 'Los datos pertenecen a un usuario registrado';
+			            //Datos del usuario  
+			            $respuesta['usuario']['id'] = $fila['id'];  
+			            $respuesta['usuario']['nombre'] = $fila['nombre'];  
+			            $respuesta['usuario']['email'] = $fila['email'];  
+			            $this->mostrarRespuesta($this->convertirJson($respuesta), 200);  
+			        }  
+       			}
+       		}  
+		} // se envia un mensaje de error
+		$this->mostrarRespuesta($this->convertirJson($this->devolverError(3)), 400);
 	}
 }
 
