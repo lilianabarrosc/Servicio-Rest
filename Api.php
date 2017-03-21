@@ -89,7 +89,9 @@ class Api extends Rest{
 			$this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);
 		}//es una petición GET
 		//se realiza la consulta a la bd
-		$query = $this->_conn->query("SELECT id, nombre, email FROM usuario");
+		$query = $this->_conn->query(
+			"SELECT id, nombre, email 
+			 FROM usuario");
 		//cantidad de usuarios
 		$filas = $query->fetchAll(PDO::FETCH_ASSOC);  
      	$num = count($filas);
@@ -140,6 +142,86 @@ class Api extends Rest{
 		} // se envia un mensaje de error
 		$this->mostrarRespuesta($this->convertirJson($this->devolverError(3)), 400);
 	}
+
+	//metodo encargado de procesar la peticion y actualiza el nombre de un usuario
+	private function actualizarNombre($idUsuario){
+		//las actualizaciones se realizan con PUT
+		if ($_SERVER['REQUEST_METHOD'] != "PUT") {  
+       		$this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);
+       	}
+       	//se procesa la solicitud
+       	//echo $idUsuario . "<br/>";  
+     	if (isset($this->datosPeticion['nombre'])){  
+       		$nombre = $this->datosPeticion['nombre'];  
+       		$id = (int) $idUsuario;
+       		#si el nombre y el id no son vacios se realiza la consulta a la base de datos 
+       		if (!empty($nombre) and $id > 0){
+       			$query = $this->_conn->prepare(
+       				"update usuario set nombre=:nombre 
+       				 WHERE id =:id");  
+		        $query->bindValue(":nombre", $nombre);  
+		        $query->bindValue(":id", $id);  
+		        $query->execute();
+		        //se corrobora que se actualizo el nombre y envia una respuesta  
+		        $filasActualizadas = $query->rowCount();
+		        if ($filasActualizadas == 1) {  
+		           $resp = array('estado' => "correcto", "msg" => "Nombre de usuario actualizado correctamente.");  
+		           $this->mostrarRespuesta($this->convertirJson($resp), 200);  
+		        } else {  
+		           $this->mostrarRespuesta($this->convertirJson($this->devolverError(5)), 400);  
+		        }   
+       		}
+       	}
+       	//se ennvia un error en la solicitud
+		$this->mostrarRespuesta($this->convertirJson($this->devolverError(5)), 400);    
+	}
+
+	//metodo encargado de procesar la peticion y borrar un usuario
+	private function borrarUsuario($idUsuario) {
+		//se valida que el metodo sea un delete  
+	    if ($_SERVER['REQUEST_METHOD'] != "DELETE") {
+	    	//se envia un mensaje de error  
+	       $this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);  
+	    }
+	    //se processa la colicitud  
+	    $id = (int) $idUsuario;  
+	    if ($id >= 0) {  //si el id existe se consulta a la bd
+	       $query = $this->_conn->prepare(
+	       	"delete from usuario 
+	       	 WHERE id =:id");  
+	       $query->bindValue(":id", $id); //se le asigna el parámetro a la consulta  
+	       $query->execute();  
+	       //rowcount para insert, delete. update  
+	       $filasBorradas = $query->rowCount();  
+	       if ($filasBorradas == 1) { //significa que se elimino y se envia un respuesta  
+	        	$resp = array('estado' => "correcto", "msg" => "usuario borrado correctamente.");  
+	         	$this->mostrarRespuesta($this->convertirJson($resp), 200);  
+	       } else { //no se pudo borrar el usuario y se envia un mensaje de error 
+	         	$this->mostrarRespuesta($this->convertirJson($this->devolverError(4)), 400);  
+	       }  
+	    }
+	    //se envia un error ya que el id no se encuentra  
+	    $this->mostrarRespuesta($this->convertirJson($this->devolverError(4)), 400);  
+    }
+
+    //metodo encargado realizar una consulta a la bd validando un email
+    private function existeUsuario($email) {  
+	    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {  
+	       $query = $this->_conn->prepare(
+	       		"SELECT email 
+	       		 from usuario 
+	       		 WHERE email = :email");
+	       	//se le asigna el parámetro  
+	       $query->bindValue(":email", $email);  
+	       $query->execute();  
+	       if ($query->fetch(PDO::FETCH_ASSOC)) {
+	       		//solo se retorna true ya que no es necesario recuperar ningun valor de la base de datos
+	        	return true;  
+	       }  
+	    }  
+	    else  
+	       return false;  
+   }    
 }
 
 ?>
