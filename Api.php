@@ -2,7 +2,7 @@
 # Se utilizarán los métodos de la clase Rest creada anteriormente
 require_once("Rest.php");
 
-class Api extends Rest{
+class Api extends Rest{ 
 	# valores fijos del servicio
 	const servidor = "localhost";
 	const usuario_db = "root";
@@ -185,7 +185,7 @@ class Api extends Rest{
 	    }
 	    //se processa la colicitud  
 	    $id = (int) $idUsuario;  
-	    if ($id >= 0) {  //si el id existe se consulta a la bd
+	    if ($id >= 0){  //si el id existe se consulta a la bd
 	       $query = $this->_conn->prepare(
 	       	"delete from usuario 
 	       	 WHERE id =:id");  
@@ -193,7 +193,7 @@ class Api extends Rest{
 	       $query->execute();  
 	       //rowcount para insert, delete. update  
 	       $filasBorradas = $query->rowCount();  
-	       if ($filasBorradas == 1) { //significa que se elimino y se envia un respuesta  
+	       if ($filasBorradas == 1){ //significa que se elimino y se envia un respuesta  
 	        	$resp = array('estado' => "correcto", "msg" => "usuario borrado correctamente.");  
 	         	$this->mostrarRespuesta($this->convertirJson($resp), 200);  
 	       } else { //no se pudo borrar el usuario y se envia un mensaje de error 
@@ -204,9 +204,9 @@ class Api extends Rest{
 	    $this->mostrarRespuesta($this->convertirJson($this->devolverError(4)), 400);  
     }
 
-    //metodo encargado realizar una consulta a la bd validando un email
-    private function existeUsuario($email) {  
-	    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {  
+    //metodo encargado de realizar una consulta a la bd validando un email
+    private function existeUsuario($email){  
+	    if (filter_var($email, FILTER_VALIDATE_EMAIL)){  
 	       $query = $this->_conn->prepare(
 	       		"SELECT email 
 	       		 from usuario 
@@ -214,14 +214,58 @@ class Api extends Rest{
 	       	//se le asigna el parámetro  
 	       $query->bindValue(":email", $email);  
 	       $query->execute();  
-	       if ($query->fetch(PDO::FETCH_ASSOC)) {
+	       if ($query->fetch(PDO::FETCH_ASSOC)){
 	       		//solo se retorna true ya que no es necesario recuperar ningun valor de la base de datos
 	        	return true;  
 	       }  
 	    }  
 	    else  
 	       return false;  
-   }    
+   }
+
+   //metodo encargado de crear un nuevo usuario mediante una solicitud POST
+   private function crearUsuario(){
+   		#valida que la solicitud sea mediante un post  
+	    if ($_SERVER['REQUEST_METHOD'] != "POST") {
+	    	//envia un error  
+	       $this->mostrarRespuesta($this->convertirJson($this->devolverError(1)), 405);  
+	    }
+	    //valida que los datos a incorporar no sean vacios  
+	    if (isset($this->datosPeticion['nombre'], $this->datosPeticion['email'], $this->datosPeticion['pwd'])){
+	       $nombre = $this->datosPeticion['nombre'];  
+	       $pwd = $this->datosPeticion['pwd'];  
+	       $email = $this->datosPeticion['email'];
+
+	       //valida la existemcia del usuario mediante el email  
+	       if (!$this->existeUsuario($email)){  
+	         $query = $this->_conn->prepare(
+	         	"INSERT into usuario (nombre,email,password,fRegistro) 
+	         	 VALUES (:nombre, :email, :pwd, NOW())");
+	         //se le asignan los valores a las variables de la consulta  
+	         $query->bindValue(":nombre", $nombre);  
+	         $query->bindValue(":email", $email);  
+	         $query->bindValue(":pwd", sha1($pwd));  
+	         $query->execute();  
+	         if ($query->rowCount() == 1){ // se inserto bien 
+	           $id = $this->_conn->lastInsertId();  
+	           $respuesta['estado'] = 'correcto';  
+	           $respuesta['msg'] = 'usuario creado correctamente';  
+	           $respuesta['usuario']['id'] = $id;  
+	           $respuesta['usuario']['nombre'] = $nombre;  
+	           $respuesta['usuario']['email'] = $email;  
+	           $this->mostrarRespuesta($this->convertirJson($respuesta), 200);  
+	         } else //se envia un error de insercion en la bd
+	           $this->mostrarRespuesta($this->convertirJson($this->devolverError(7)), 400);  
+	       } else //se envia un error del usuario no existe
+	         $this->mostrarRespuesta($this->convertirJson($this->devolverError(8)), 400);  
+	    } else {  
+	       $this->mostrarRespuesta($this->convertirJson($this->devolverError(7)), 400);  
+	     }  
+	}  
 }
+
+//llamado a la funcion Api()
+$api = new Api();  
+$api->procesarLLamada();  
 
 ?>
